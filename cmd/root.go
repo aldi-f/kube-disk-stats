@@ -20,12 +20,13 @@ import (
 var Version = "1.0.0"
 
 var (
-	contextFlag  string
-	nodeFlag     string
-	outputFlag   string
-	topFlag      int
-	watchFlag    bool
-	intervalFlag time.Duration
+	contextFlag   string
+	nodeFlag      string
+	outputFlag    string
+	topFlag       int
+	watchFlag     bool
+	intervalFlag  time.Duration
+	breakdownFlag bool
 )
 
 type NodeStatsFetcher interface {
@@ -50,10 +51,12 @@ func NewRootCmd() *cobra.Command {
 	cmd.Flags().IntVarP(&topFlag, "top", "t", 0, "Show top N results (0 = all)")
 	cmd.Flags().BoolVarP(&watchFlag, "watch", "w", false, "Watch mode: continuously refresh")
 	cmd.Flags().DurationVarP(&intervalFlag, "interval", "i", 5*time.Second, "Refresh interval for watch mode")
+	cmd.Flags().BoolVar(&breakdownFlag, "breakdown", false, "Show rootfs/logs breakdown")
 
 	cmd.AddCommand(newPodsCmd())
 	cmd.AddCommand(newNodesCmd())
 	cmd.AddCommand(newContainersCmd())
+	cmd.AddCommand(newImagesCmd())
 	cmd.AddCommand(newVersionCmd())
 
 	return cmd
@@ -93,6 +96,14 @@ func newContainersCmd() *cobra.Command {
 	}
 }
 
+func newImagesCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "images",
+		Short: "Display Docker images on nodes",
+		RunE:  runImages,
+	}
+}
+
 func newVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
@@ -114,6 +125,55 @@ func run(ctx context.Context, showPods, showNodes, showContainers bool) error {
 	}
 
 	return executeQuery(ctx, client, showPods, showNodes, showContainers)
+}
+
+func runImages(cmd *cobra.Command, args []string) error {
+	client, err := k8s.NewClient(contextFlag)
+	if err != nil {
+		return fmt.Errorf("failed to create kubernetes client: %w", err)
+	}
+
+	ctx := context.Background()
+	var nodeNames []string
+
+	if nodeFlag != "" {
+		nodeNames = []string{nodeFlag}
+	} else {
+		nodeNames, err = client.ListNodes(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to list nodes: %w", err)
+		}
+	}
+
+	if len(nodeNames) > 1 {
+		fmt.Printf("Found %d nodes, querying...\n", len(nodeNames))
+	}
+
+	for i, nodeName := range nodeNames {
+		if len(nodeNames) > 1 {
+			fmt.Printf("\rQuerying node %d/%d: %s", i+1, len(nodeNames), nodeName)
+		}
+
+		images, err := client.GetNodeImages(ctx, nodeName)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to get images for node %s: %v\n", nodeName, err)
+			continue
+		}
+
+		if outputFlag == "json" {
+			if err := display.DisplayImagesJSON(nodeName, images); err != nil {
+				return err
+			}
+		} else {
+			display.DisplayImagesTable(nodeName, images)
+		}
+	}
+
+	if len(nodeNames) > 1 {
+		fmt.Println()
+	}
+
+	return nil
 }
 
 func watchLoop(ctx context.Context, client *k8s.Client, showPods, showNodes, showContainers bool) error {
@@ -153,10 +213,18 @@ func executeQuery(ctx context.Context, client *k8s.Client, showPods, showNodes, 
 		}
 	}
 
+	if !watchFlag && len(nodeNames) > 1 {
+		fmt.Printf("Found %d nodes, querying...\n", len(nodeNames))
+	}
+
 	nodes := make([]*models.NodeStorage, 0, len(nodeNames))
 	allContainers := make([]models.Container, 0)
 
-	for _, nodeName := range nodeNames {
+	for i, nodeName := range nodeNames {
+		if !watchFlag && len(nodeNames) > 1 {
+			fmt.Printf("\rQuerying node %d/%d: %s", i+1, len(nodeNames), nodeName)
+		}
+
 		summary, err := client.GetNodeStatsSummary(ctx, nodeName)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to get stats for node %s: %v\n", nodeName, err)
@@ -167,6 +235,10 @@ func executeQuery(ctx context.Context, client *k8s.Client, showPods, showNodes, 
 		nodeStorage := analyzer.CalculateNodeStorage(summary, nodeName, totalBytes)
 		nodes = append(nodes, nodeStorage)
 		allContainers = append(allContainers, nodeStorage.Containers...)
+	}
+
+	if !watchFlag && len(nodeNames) > 1 {
+		fmt.Println()
 	}
 
 	if outputFlag == "json" {
@@ -180,21 +252,21 @@ func displayTable(nodes []*models.NodeStorage, containers []models.Container, sh
 	if showNodes {
 		sorter := kubesort.NodeSorter{Nodes: nodes, Limit: topFlag}
 		sortedNodes := sorter.SortByPercentage()
-		display.DisplayNodesTable(sortedNodes)
+		display.DisplayNodesTable(sortedNodes, breakdownFlag)
 		fmt.Println()
 	}
 
 	if showPods {
-		pods := analyzer.GroupByPod(containers)
+		nodeCapacities := make(map[string]int64)
+		for _, node := range nodes {
+			nodeCapacities[node.Name] = node.TotalBytes
+		}
+
+		pods := analyzer.GroupByPod(containers, nodeCapacities)
 		sorter := kubesort.PodSorter{Pods: pods, Limit: topFlag}
 		sortedPods := sorter.SortByUsedBytes()
 
-		var totalNodeBytes int64
-		for _, node := range nodes {
-			totalNodeBytes += node.TotalBytes
-		}
-
-		display.DisplayPodsTable(sortedPods, totalNodeBytes)
+		display.DisplayPodsTable(sortedPods, breakdownFlag)
 		fmt.Println()
 	}
 
@@ -217,7 +289,12 @@ func displayJSON(nodes []*models.NodeStorage, containers []models.Container, sho
 	}
 
 	if showPods {
-		pods := analyzer.GroupByPod(containers)
+		nodeCapacities := make(map[string]int64)
+		for _, node := range nodes {
+			nodeCapacities[node.Name] = node.TotalBytes
+		}
+
+		pods := analyzer.GroupByPod(containers, nodeCapacities)
 		if err := display.DisplayPodsJSON(pods); err != nil {
 			return err
 		}

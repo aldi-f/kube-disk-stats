@@ -8,6 +8,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/aldi-f/kube-disk-stats/internal/models"
 )
 
 type Client struct {
@@ -67,4 +69,21 @@ func (c *Client) GetContextName() (string, error) {
 		return "", err
 	}
 	return rawConfig.CurrentContext, nil
+}
+
+func (c *Client) GetNodeImages(ctx context.Context, nodeName string) ([]models.NodeImage, error) {
+	node, err := c.Clientset.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node %s: %w", nodeName, err)
+	}
+
+	images := make([]models.NodeImage, 0, len(node.Status.Images))
+	for _, img := range node.Status.Images {
+		images = append(images, models.NodeImage{
+			Names:     img.Names,
+			SizeBytes: img.SizeBytes,
+		})
+	}
+
+	return images, nil
 }

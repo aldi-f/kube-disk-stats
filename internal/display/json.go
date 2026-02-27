@@ -34,3 +34,21 @@ func DisplayContainersJSON(containers []models.Container) error {
 	}
 	return nil
 }
+
+func DisplayImagesJSON(nodeName string, images []models.NodeImage) error {
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+
+	output := struct {
+		Node   string             `json:"node"`
+		Images []models.NodeImage `json:"images"`
+	}{
+		Node:   nodeName,
+		Images: images,
+	}
+
+	if err := encoder.Encode(output); err != nil {
+		return fmt.Errorf("failed to encode images: %w", err)
+	}
+	return nil
+}

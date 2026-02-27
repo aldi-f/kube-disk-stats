@@ -85,7 +85,7 @@ func calculateAge(startTime string) string {
 	return fmt.Sprintf("%dm", minutes)
 }
 
-func GroupByPod(containers []models.Container) []*models.PodStorage {
+func GroupByPod(containers []models.Container, nodeCapacities map[string]int64) []*models.PodStorage {
 	podMap := make(map[string]*models.PodStorage)
 
 	for _, container := range containers {
@@ -94,13 +94,18 @@ func GroupByPod(containers []models.Container) []*models.PodStorage {
 			pod.Containers = append(pod.Containers, container)
 			pod.TotalBytes += container.TotalBytes
 		} else {
+			nodeTotalBytes := int64(0)
+			if cap, ok := nodeCapacities[container.NodeName]; ok {
+				nodeTotalBytes = cap
+			}
 			podMap[key] = &models.PodStorage{
-				Name:       container.PodName,
-				Namespace:  container.Namespace,
-				NodeName:   container.NodeName,
-				Age:        container.PodAge,
-				TotalBytes: container.TotalBytes,
-				Containers: []models.Container{container},
+				Name:           container.PodName,
+				Namespace:      container.Namespace,
+				NodeName:       container.NodeName,
+				Age:            container.PodAge,
+				TotalBytes:     container.TotalBytes,
+				NodeTotalBytes: nodeTotalBytes,
+				Containers:     []models.Container{container},
 			}
 		}
 	}
