@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yourusername/kube-disk-stats/internal/models"
+	"github.com/aldi-f/kube-disk-stats/internal/models"
 )
 
 func CalculateNodeStorage(summary *models.StatsSummary, nodeName string, totalBytes int64) *models.NodeStorage {

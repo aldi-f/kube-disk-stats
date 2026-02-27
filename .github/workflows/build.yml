@@ -41,23 +41,20 @@ jobs:
           ${{ runner.os }}-go-
 
     - name: Download dependencies
-      working-directory: ./cli
       run: go mod download
 
     - name: Run tests
-      working-directory: ./cli
       run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
 
     - name: Upload coverage
       uses: codecov/codecov-action@v4
       if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
       with:
-        files: ./kube-disk-stats/coverage.txt
+        files: ./coverage.txt
         flags: unittests
         name: codecov-umbrella
 
     - name: Build binary
-      working-directory: ./cli
       env:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
@@ -73,7 +70,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: kube-disk-stats-${{ matrix.goos }}-${{ matrix.goarch }}
-        path: kube-disk-stats/dist/*
+        path: dist/*
         retention-days: 7
 
   lint:
@@ -92,7 +89,6 @@ jobs:
       uses: golangci/golangci-lint-action@v4
       with:
         version: latest
-        working-directory: ./cli
         args: --timeout=5m
 
   docker:
@@ -116,7 +112,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: yourusername/kube-disk-stats
+        images: aldi-f/kube-disk-stats
         tags: |
           type=ref,event=branch
           type=sha,prefix=
@@ -124,7 +120,7 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v5
       with:
-        context: ./cli
+        context: .
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}

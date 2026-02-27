@@ -3,7 +3,7 @@ package sort
 import (
 	"sort"
 
-	"github.com/yourusername/kube-disk-stats/internal/models"
+	"github.com/aldi-f/kube-disk-stats/internal/models"
 )
 
 type NodeSorter struct {

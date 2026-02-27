@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/yourusername/kube-disk-stats/internal/models"
+	"github.com/aldi-f/kube-disk-stats/internal/models"
 )
 
 func DisplayNodesJSON(nodes []*models.NodeStorage) error {

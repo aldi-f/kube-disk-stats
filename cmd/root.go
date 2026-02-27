@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/yourusername/kube-disk-stats/internal/analyzer"
-	"github.com/yourusername/kube-disk-stats/internal/display"
-	"github.com/yourusername/kube-disk-stats/internal/k8s"
-	"github.com/yourusername/kube-disk-stats/internal/models"
-	kubesort "github.com/yourusername/kube-disk-stats/pkg/sort"
+	"github.com/aldi-f/kube-disk-stats/internal/analyzer"
+	"github.com/aldi-f/kube-disk-stats/internal/display"
+	"github.com/aldi-f/kube-disk-stats/internal/k8s"
+	"github.com/aldi-f/kube-disk-stats/internal/models"
+	kubesort "github.com/aldi-f/kube-disk-stats/pkg/sort"
 )
 
 var Version = "dev"

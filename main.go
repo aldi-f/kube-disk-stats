@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/yourusername/kube-disk-stats/cmd"
+	"github.com/aldi-f/kube-disk-stats/cmd"
 )
 
 var Version = "1.0.0"

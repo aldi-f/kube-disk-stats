@@ -17,25 +17,25 @@ A CLI tool for querying Kubernetes node and pod disk usage statistics. kube-disk
 
 ### From Binary
 
-Download the latest release from the [GitHub Releases](https://github.com/yourusername/kube-disk-stats/releases) page.
+Download the latest release from the [GitHub Releases](https://github.com/aldi-f/kube-disk-stats/releases) page.
 
 ### From Source
 
 ```bash
-go install github.com/yourusername/kube-disk-stats@latest
+go install github.com/aldi-f/kube-disk-stats@latest
 ```
 
 ### Using Docker
 
 ```bash
-docker pull yourusername/kube-disk-stats:latest
-docker run --rm -v ~/.kube:/root/.kube yourusername/kube-disk-stats
+docker pull aldi-f/kube-disk-stats:latest
+docker run --rm -v ~/.kube:/root/.kube aldi-f/kube-disk-stats
 ```
 
 ### From Homebrew (Linux/Mac)
 
 ```bash
-brew tap yourusername/tap
+brew tap aldi-f/tap
 brew install kube-disk-stats
 ```
 

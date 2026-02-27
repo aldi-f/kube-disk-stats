@@ -1,4 +1,4 @@
-module github.com/yourusername/kube-disk-stats
+module github.com/aldi-f/kube-disk-stats
 
 go 1.23
 

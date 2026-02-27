@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/yourusername/kube-disk-stats/internal/models"
+	"github.com/aldi-f/kube-disk-stats/internal/models"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

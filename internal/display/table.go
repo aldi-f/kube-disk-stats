@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/olekukonko/tablewriter"
-	"github.com/yourusername/kube-disk-stats/internal/models"
+	"github.com/aldi-f/kube-disk-stats/internal/models"
 )
 
 const (

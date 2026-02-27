@@ -28,7 +28,7 @@ linters-settings:
   govet:
     check-shadowing: true
   goimports:
-    local-prefixes: github.com/yourusername/kube-disk-stats
+    local-prefixes: github.com/aldi-f/kube-disk-stats
 
 issues:
   exclude-use-default: false
