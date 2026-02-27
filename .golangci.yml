@@ -1,0 +1,36 @@
+run:
+  timeout: 5m
+  go: '1.23'
+
+linters:
+  disable-all: true
+  enable:
+    - gofmt
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - deadcode
+    - typecheck
+    - goimports
+    - misspell
+    - gocyclo
+    - gosec
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  gosec:
+    excludes:
+      - G104
+  govet:
+    check-shadowing: true
+  goimports:
+    local-prefixes: github.com/yourusername/kube-disk-stats
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0

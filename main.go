@@ -1,0 +1,19 @@
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/yourusername/kube-disk-stats/cmd"
+)
+
+var Version = "dev"
+
+func main() {
+	cmd.Version = Version
+	rootCmd := cmd.NewRootCmd()
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
