@@ -1,6 +1,7 @@
 .PHONY: build clean test lint docker-build docker-push install release
 
 APP_NAME=kube-disk-stats
+DOCKER_IMAGE=ghcr.io/aldi-f/kube-disk-stats
 VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 LDFLAGS=-ldflags="-s -w -X main.Version=$(VERSION)"
 
@@ -46,13 +47,13 @@ lint:
 
 docker-build:
 	@echo "Building Docker image..."
-	docker build -t $(APP_NAME):$(VERSION) -f Dockerfile .
-	docker tag $(APP_NAME):$(VERSION) $(APP_NAME):latest
+	docker build -t $(DOCKER_IMAGE):$(VERSION) -f Dockerfile .
+	docker tag $(DOCKER_IMAGE):$(VERSION) $(DOCKER_IMAGE):latest
 
 docker-push:
 	@echo "Pushing Docker image..."
-	docker push $(APP_NAME):$(VERSION)
-	docker push $(APP_NAME):latest
+	docker push $(DOCKER_IMAGE):$(VERSION)
+	docker push $(DOCKER_IMAGE):latest
 
 install: build
 	@echo "Installing $(APP_NAME)..."

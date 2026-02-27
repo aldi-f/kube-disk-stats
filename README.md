@@ -28,8 +28,8 @@ go install github.com/aldi-f/kube-disk-stats@latest
 ### Using Docker
 
 ```bash
-docker pull aldi-f/kube-disk-stats:latest
-docker run --rm -v ~/.kube:/root/.kube aldi-f/kube-disk-stats
+docker pull ghcr.io/aldi-f/kube-disk-stats:latest
+docker run --rm -v ~/.kube:/root/.kube ghcr.io/aldi-f/kube-disk-stats
 ```
 
 ### From Homebrew (Linux/Mac)

@@ -167,10 +167,8 @@ docker run --rm -v ~/.kube:/root/.kube kube-disk-stats --top 10
 ### Docker Hub Images
 
 Images are available at:
-- `aldi-f/kube-disk-stats:latest`
-- `aldi-f/kube-disk-stats:v1.0.0`
-- `aldi-f/kube-disk-stats:v1.0`
-- `aldi-f/kube-disk-stats:v1`
+- `ghcr.io/aldi-f/kube-disk-stats:latest`
+- `ghcr.io/aldi-f/kube-disk-stats:v1.0.0`
 
 ## Installation Methods
 
@@ -184,7 +182,7 @@ go install github.com/aldi-f/kube-disk-stats@latest
 
 ### Using Docker
 ```bash
-docker pull aldi-f/kube-disk-stats:latest
+docker pull ghcr.io/ghcr.io/aldi-f/kube-disk-stats:latest
 ```
 
 ### Using Homebrew

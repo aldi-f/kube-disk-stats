@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/aldi-f/kube-disk-stats/internal/models"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/aldi-f/kube-disk-stats/internal/models"
 )
 
 func (c *Client) GetNodeStatsSummary(ctx context.Context, nodeName string) (*models.StatsSummary, error) {
@@ -21,7 +22,9 @@ func (c *Client) GetNodeStatsSummary(ctx context.Context, nodeName string) (*mod
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stats summary for node %s: %w", nodeName, err)
 	}
-	defer stream.Close()
+	defer func() {
+		_ = stream.Close()
+	}()
 
 	data, err := io.ReadAll(stream)
 	if err != nil {

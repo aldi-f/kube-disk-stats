@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
 	"github.com/aldi-f/kube-disk-stats/internal/analyzer"
 	"github.com/aldi-f/kube-disk-stats/internal/display"
 	"github.com/aldi-f/kube-disk-stats/internal/k8s"
@@ -16,7 +17,7 @@ import (
 	kubesort "github.com/aldi-f/kube-disk-stats/pkg/sort"
 )
 
-var Version = "dev"
+var Version = "1.0.0"
 
 var (
 	contextFlag  string

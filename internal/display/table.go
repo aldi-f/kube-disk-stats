@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/olekukonko/tablewriter"
+
 	"github.com/aldi-f/kube-disk-stats/internal/models"
 )
 
@@ -22,7 +23,8 @@ func formatBytes(bytes int64) string {
 		return fmt.Sprintf("%.2f MiB", float64(bytes)/float64(MB))
 	}
 	if bytes >= KB {
-		return fmt.Sprintf("%.2f KiB", float64(bytes)/float64(KB))
+		return fmt.Sprintf("%.2f KiB",
+			float64(bytes)/float64(KB))
 	}
 	return fmt.Sprintf("%d B", bytes)
 }
