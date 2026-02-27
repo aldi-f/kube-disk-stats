@@ -1,7 +1,7 @@
 class Kubediskstats < Formula
   desc "CLI tool for querying Kubernetes node and pod disk usage statistics"
-  homepage "https://github.com/yourusername/kube-disk-stats"
-  url "https://github.com/yourusername/kube-disk-stats.git",
+  homepage "https://github.com/aldi-f/kube-disk-stats"
+  url "https://github.com/aldi-f/kube-disk-stats.git",
     tag:      "VERSION",
     revision: "REVISION"
 

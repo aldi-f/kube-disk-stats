@@ -65,8 +65,8 @@ Enhancement suggestions are welcome! Please:
 
 ```bash
 # Clone your fork
-git clone https://github.com/yourusername/kube-disk-stats.git
-cd kube-disk-stats/cli
+git clone https://github.com/kube-disk-stats.git
+cd kube-disk-stats
 
 # Install dependencies
 go mod download
