@@ -67,12 +67,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        goos: [ linux, darwin, windows ]
+        goos: [ linux, darwin ]
         goarch: [ amd64, arm64 ]
-        exclude:
-        - goos: windows
-          goarch: arm64
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -98,19 +94,11 @@ jobs:
       run: |
         TAG=${{ steps.get_tag.outputs.tag }}
         OUTPUT_NAME="kube-disk-stats-${{ matrix.goos }}-${{ matrix.goarch }}"
-        if [ "${{ matrix.goos }}" = "windows" ]; then
-          OUTPUT_NAME="${OUTPUT_NAME}.exe"
-        fi
 
         go build -ldflags="-s -w -X main.Version=${TAG}" -o "dist/${OUTPUT_NAME}" .
         cd dist
         tar -czf "${OUTPUT_NAME}.tar.gz" "${OUTPUT_NAME}"
-
-        if [ "${{ matrix.goos }}" = "windows" ]; then
-          zip -r "${OUTPUT_NAME}.zip" "${OUTPUT_NAME}.exe"
-        else
-          zip -r "${OUTPUT_NAME}.zip" "${OUTPUT_NAME}"
-        fi
+        zip -r "${OUTPUT_NAME}.zip" "${OUTPUT_NAME}"
 
     - name: Upload release assets
       uses: softprops/action-gh-release@v2
