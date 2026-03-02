@@ -25,7 +25,7 @@ env:
 jobs:
   create-tag:
     name: Create Tag
-    if: github.event_name == 'workflow_dispatch' && inputs.create_tag == 'true'
+    if: github.event_name == 'workflow_dispatch' && inputs.create_tag == true
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -41,6 +41,7 @@ jobs:
   release:
     name: Create Release
     needs: [ create-tag ]
+    if: always() && (needs.create-tag.result == 'success' || needs.create-tag.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
