@@ -1,0 +1,56 @@
+name: Create Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to create (e.g., v1.0.0)'
+        required: true
+        type: string
+      message:
+        description: 'Tag message'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  create-tag:
+    name: Create Tag
+    runs-on: ubuntu-latest
+    steps:
+    - name: Validate tag format
+      run: |
+        if [[ ! "${{ inputs.tag }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Error: Tag must be in format v*.*.*  (e.g., v1.0.0)"
+          exit 1
+        fi
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Check if tag exists
+      run: |
+        if git rev-parse "${{ inputs.tag }}" >/dev/null 2>&1; then
+          echo "Error: Tag ${{ inputs.tag }} already exists"
+          exit 1
+        fi
+
+    - name: Create and push tag
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+        MESSAGE="${{ inputs.message }}"
+        if [ -z "$MESSAGE" ]; then
+          MESSAGE="Release ${{ inputs.tag }}"
+        fi
+
+        git tag -a "${{ inputs.tag }}" -m "$MESSAGE"
+        git push origin "${{ inputs.tag }}"
+
+        echo "✅ Tag ${{ inputs.tag }} created and pushed successfully"

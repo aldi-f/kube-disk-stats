@@ -7,14 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (e.g., v1.0.0)'
+        description: 'Existing release tag (e.g., v1.0.0)'
         required: true
         type: string
-      create_tag:
-        description: 'Create tag if it does not exist'
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -23,27 +18,8 @@ env:
   GO_VERSION: '1.23'
 
 jobs:
-  create-tag:
-    name: Create Tag
-    if: github.event_name == 'workflow_dispatch' && inputs.create_tag == true
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Create and push tag
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git tag -a ${{ inputs.tag }} -m "Release ${{ inputs.tag }}"
-        git push origin ${{ inputs.tag }}
-
   release:
     name: Create Release
-    needs: [ create-tag ]
-    if: always() && (needs.create-tag.result == 'success' || needs.create-tag.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -93,6 +69,8 @@ jobs:
         draft: false
         prerelease: false
         generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-release-artifacts:
     name: Build Release Binaries
@@ -109,11 +87,22 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.tag || github.ref }}
 
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: ${{ env.GO_VERSION }}
+
+    - name: Determine tag
+      id: get_tag
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+        else
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
 
     - name: Download dependencies
       run: go mod download
@@ -124,11 +113,7 @@ jobs:
         GOARCH: ${{ matrix.goarch }}
         CGO_ENABLED: 0
       run: |
-        TAG=${GITHUB_REF#refs/tags/}
-        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          TAG=${{ inputs.tag }}
-        fi
-
+        TAG=${{ steps.get_tag.outputs.tag }}
         OUTPUT_NAME="kube-disk-stats-${{ matrix.goos }}-${{ matrix.goarch }}"
         if [ "${{ matrix.goos }}" = "windows" ]; then
           OUTPUT_NAME="${OUTPUT_NAME}.exe"
@@ -147,6 +132,7 @@ jobs:
     - name: Upload release assets
       uses: softprops/action-gh-release@v2
       with:
+        tag_name: ${{ steps.get_tag.outputs.tag }}
         files: |
           dist/*.tar.gz
           dist/*.zip
@@ -160,6 +146,17 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.tag || github.ref }}
+
+    - name: Determine tag
+      id: get_tag
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+        else
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -177,9 +174,9 @@ jobs:
       with:
         images: ghcr.io/${{ github.repository }}
         tags: |
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=semver,pattern={{major}}
+          type=semver,pattern={{version}},value=${{ steps.get_tag.outputs.tag }}
+          type=semver,pattern={{major}}.{{minor}},value=${{ steps.get_tag.outputs.tag }}
+          type=semver,pattern={{major}},value=${{ steps.get_tag.outputs.tag }}
           type=sha
 
     - name: Build and push Docker images
