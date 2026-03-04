@@ -52,3 +52,31 @@ func DisplayImagesJSON(nodeName string, images []models.NodeImage) error {
 	}
 	return nil
 }
+
+func DisplayImagesSummaryJSON(summaries []models.NodeImageSummary) error {
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+
+	if err := encoder.Encode(summaries); err != nil {
+		return fmt.Errorf("failed to encode image summaries: %w", err)
+	}
+	return nil
+}
+
+func DisplayImagesDetailJSON(summaries []models.NodeImageSummary, nodeImages map[string][]models.NodeImage) error {
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+
+	output := struct {
+		Summaries []models.NodeImageSummary     `json:"summaries"`
+		Details   map[string][]models.NodeImage `json:"details"`
+	}{
+		Summaries: summaries,
+		Details:   nodeImages,
+	}
+
+	if err := encoder.Encode(output); err != nil {
+		return fmt.Errorf("failed to encode image details: %w", err)
+	}
+	return nil
+}

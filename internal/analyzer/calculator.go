@@ -7,11 +7,12 @@ import (
 	"github.com/aldi-f/kube-disk-stats/internal/models"
 )
 
-func CalculateNodeStorage(summary *models.StatsSummary, nodeName string, totalBytes int64) *models.NodeStorage {
+func CalculateNodeStorage(summary *models.StatsSummary, nodeName string, totalBytes int64, imageBytes int64) *models.NodeStorage {
 	node := &models.NodeStorage{
 		Name:       nodeName,
 		Age:        calculateAge(summary.Node.StartTime),
 		TotalBytes: totalBytes,
+		ImageBytes: imageBytes,
 	}
 
 	var totalUsed int64
@@ -43,6 +44,7 @@ func CalculateNodeStorage(summary *models.StatsSummary, nodeName string, totalBy
 		totalUsed += podTotal
 	}
 
+	totalUsed += imageBytes
 	node.UsedBytes = totalUsed
 	if totalBytes > 0 {
 		node.Percentage = float64(totalUsed) / float64(totalBytes) * 100

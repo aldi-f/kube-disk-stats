@@ -7,6 +7,7 @@ type NodeStorage struct {
 	Age        string      `json:"age"`
 	TotalBytes int64       `json:"total_bytes"`
 	UsedBytes  int64       `json:"used_bytes"`
+	ImageBytes int64       `json:"image_bytes"`
 	Percentage float64     `json:"percentage"`
 	PodCount   int         `json:"pod_count"`
 	Containers []Container `json:"containers"`
@@ -37,6 +38,12 @@ type PodStorage struct {
 type NodeImage struct {
 	Names     []string `json:"names"`
 	SizeBytes int64    `json:"size_bytes"`
+}
+
+type NodeImageSummary struct {
+	NodeName   string `json:"node_name"`
+	ImageCount int    `json:"image_count"`
+	TotalSize  int64  `json:"total_size"`
 }
 
 type Config struct {

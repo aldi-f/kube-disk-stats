@@ -34,7 +34,7 @@ func DisplayNodesTable(nodes []*models.NodeStorage, breakdown bool) {
 
 	headers := []string{"NODE", "TOTAL", "USED", "%", "PODS", "AGE"}
 	if breakdown {
-		headers = []string{"NODE", "TOTAL", "ROOTFS", "LOGS", "USED", "%", "PODS", "AGE"}
+		headers = []string{"NODE", "TOTAL", "ROOTFS", "LOGS", "IMAGES", "USED", "%", "PODS", "AGE"}
 	}
 
 	table.SetHeader(headers)
@@ -54,7 +54,7 @@ func DisplayNodesTable(nodes []*models.NodeStorage, breakdown bool) {
 		percentage := ColorizePercentageText(node.Percentage)
 
 		row := []string{
-			truncateString(node.Name, 35),
+			node.Name,
 			formatBytes(node.TotalBytes),
 		}
 
@@ -65,7 +65,7 @@ func DisplayNodesTable(nodes []*models.NodeStorage, breakdown bool) {
 				rootfsBytes += container.RootFSBytes
 				logsBytes += container.LogsBytes
 			}
-			row = append(row, formatBytes(rootfsBytes), formatBytes(logsBytes))
+			row = append(row, formatBytes(rootfsBytes), formatBytes(logsBytes), formatBytes(node.ImageBytes))
 		}
 
 		row = append(row,
@@ -73,7 +73,6 @@ func DisplayNodesTable(nodes []*models.NodeStorage, breakdown bool) {
 			fmt.Sprintf("%d", node.PodCount),
 			node.Age,
 		)
-
 		table.Append(row)
 	}
 
@@ -170,14 +169,16 @@ func truncateString(s string, maxLen int) string {
 	return s[:maxLen-3] + "..."
 }
 
-func DisplayImagesTable(nodeName string, images []models.NodeImage) {
+func DisplayImagesTable(nodeName string, images []models.NodeImage, showHeaders bool) {
 	var totalBytes int64
 	for _, img := range images {
 		totalBytes += img.SizeBytes
 	}
 
-	fmt.Printf("Node: %s\n", nodeName)
-	fmt.Printf("Total images: %d | Total size: %s\n\n", len(images), formatBytes(totalBytes))
+	if showHeaders {
+		fmt.Printf("Node: %s\n", nodeName)
+		fmt.Printf("Total images: %d | Total size: %s\n\n", len(images), formatBytes(totalBytes))
+	}
 
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"IMAGE", "SIZE", "%"})
@@ -212,5 +213,33 @@ func DisplayImagesTable(nodeName string, images []models.NodeImage) {
 	}
 
 	table.Render()
-	fmt.Println()
+	if showHeaders {
+		fmt.Println()
+	}
+}
+
+func DisplayImagesSummaryTable(summaries []models.NodeImageSummary) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"NODE", "IMAGES", "TOTAL SIZE"})
+	table.SetAutoWrapText(false)
+	table.SetAutoFormatHeaders(true)
+	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+	table.SetAlignment(tablewriter.ALIGN_LEFT)
+	table.SetCenterSeparator("")
+	table.SetColumnSeparator("")
+	table.SetRowSeparator("")
+	table.SetHeaderLine(false)
+	table.SetBorder(false)
+	table.SetTablePadding("\t")
+	table.SetNoWhiteSpace(true)
+
+	for _, summary := range summaries {
+		table.Append([]string{
+			summary.NodeName,
+			fmt.Sprintf("%d", summary.ImageCount),
+			formatBytes(summary.TotalSize),
+		})
+	}
+
+	table.Render()
 }

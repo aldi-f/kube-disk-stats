@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sort"
 	"syscall"
 	"time"
 
@@ -42,17 +43,12 @@ func NewRootCmd() *cobra.Command {
 		Use:   "kube-disk-stats",
 		Short: "Query Kubernetes node and pod disk usage",
 		Long:  `kube-disk-stats is a CLI tool for querying Kubernetes node and pod disk usage statistics.`,
-		RunE:  runStats,
 	}
 
-	cmd.Flags().StringVarP(&contextFlag, "context", "c", "", "Kubernetes context to use")
-	cmd.Flags().StringVarP(&nodeFlag, "node", "n", "", "Query specific node (default: all nodes)")
-	cmd.Flags().StringVarP(&outputFlag, "output", "o", "table", "Output format: table or json")
-	cmd.Flags().IntVarP(&topFlag, "top", "t", 0, "Show top N results (0 = all)")
-	cmd.Flags().BoolVarP(&watchFlag, "watch", "w", false, "Watch mode: continuously refresh")
-	cmd.Flags().DurationVarP(&intervalFlag, "interval", "i", 5*time.Second, "Refresh interval for watch mode")
-	cmd.Flags().BoolVar(&breakdownFlag, "breakdown", false, "Show rootfs/logs breakdown")
+	cmd.PersistentFlags().StringVarP(&contextFlag, "context", "c", "", "Kubernetes context to use")
+	cmd.PersistentFlags().StringVarP(&nodeFlag, "node", "n", "", "Query specific node (default: all nodes)")
 
+	cmd.AddCommand(newAllCmd())
 	cmd.AddCommand(newPodsCmd())
 	cmd.AddCommand(newNodesCmd())
 	cmd.AddCommand(newContainersCmd())
@@ -62,46 +58,76 @@ func NewRootCmd() *cobra.Command {
 	return cmd
 }
 
-func runStats(cmd *cobra.Command, args []string) error {
-	return run(context.Background(), true, true, false)
+func addOutputFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVarP(&outputFlag, "output", "o", "table", "Output format: table or json")
+	cmd.Flags().IntVarP(&topFlag, "top", "t", 0, "Show top N results (0 = all)")
+	cmd.Flags().BoolVar(&breakdownFlag, "breakdown", false, "Show rootfs/logs/images breakdown")
+	cmd.Flags().BoolVarP(&watchFlag, "watch", "w", false, "Watch mode: continuously refresh")
+	cmd.Flags().DurationVarP(&intervalFlag, "interval", "i", 5*time.Second, "Refresh interval for watch mode")
+}
+
+func newAllCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "all",
+		Short: "Display all storage usage (nodes and pods)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(context.Background(), true, true, false)
+		},
+	}
+	addOutputFlags(cmd)
+	return cmd
 }
 
 func newPodsCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "pods",
 		Short: "Display pod storage usage",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return run(context.Background(), true, false, false)
 		},
 	}
+	addOutputFlags(cmd)
+	return cmd
 }
 
 func newNodesCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "nodes",
 		Short: "Display node storage usage",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return run(context.Background(), false, true, false)
 		},
 	}
+	addOutputFlags(cmd)
+	return cmd
 }
 
 func newContainersCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "containers",
 		Short: "Display container storage usage",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return run(context.Background(), false, false, true)
 		},
 	}
+	addOutputFlags(cmd)
+	return cmd
 }
 
 func newImagesCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "images",
 		Short: "Display Docker images on nodes",
-		RunE:  runImages,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if watchFlag && breakdownFlag {
+				return fmt.Errorf("--watch and --breakdown are mutually exclusive")
+			}
+			return nil
+		},
+		RunE: runImages,
 	}
+	addOutputFlags(cmd)
+	return cmd
 }
 
 func newVersionCmd() *cobra.Command {
@@ -133,8 +159,40 @@ func runImages(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create kubernetes client: %w", err)
 	}
 
-	ctx := context.Background()
+	if watchFlag {
+		return watchImagesLoop(context.Background(), client)
+	}
+
+	return executeImagesQuery(context.Background(), client)
+}
+
+func watchImagesLoop(ctx context.Context, client *k8s.Client) error {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	ticker := time.NewTicker(intervalFlag)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			fmt.Print("\033[2J\033[H")
+			fmt.Printf("Last updated: %s\n\n", time.Now().Format(time.RFC3339))
+
+			if err := executeImagesQuery(ctx, client); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			}
+
+		case <-sigChan:
+			fmt.Println("\nStopping watch mode...")
+			return nil
+		}
+	}
+}
+
+func executeImagesQuery(ctx context.Context, client *k8s.Client) error {
 	var nodeNames []string
+	var err error
 
 	if nodeFlag != "" {
 		nodeNames = []string{nodeFlag}
@@ -149,6 +207,9 @@ func runImages(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Found %d nodes, querying...\n", len(nodeNames))
 	}
 
+	nodeImages := make(map[string][]models.NodeImage)
+	summaries := make([]models.NodeImageSummary, 0, len(nodeNames))
+
 	for i, nodeName := range nodeNames {
 		if len(nodeNames) > 1 {
 			fmt.Printf("\rQuerying node %d/%d: %s", i+1, len(nodeNames), nodeName)
@@ -160,17 +221,47 @@ func runImages(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		if outputFlag == "json" {
-			if err := display.DisplayImagesJSON(nodeName, images); err != nil {
-				return err
-			}
-		} else {
-			display.DisplayImagesTable(nodeName, images)
+		nodeImages[nodeName] = images
+
+		var totalSize int64
+		for _, img := range images {
+			totalSize += img.SizeBytes
 		}
+
+		summaries = append(summaries, models.NodeImageSummary{
+			NodeName:   nodeName,
+			ImageCount: len(images),
+			TotalSize:  totalSize,
+		})
 	}
 
 	if len(nodeNames) > 1 {
 		fmt.Println()
+	}
+
+	sort.Slice(summaries, func(i, j int) bool {
+		return summaries[i].TotalSize > summaries[j].TotalSize
+	})
+
+	if topFlag > 0 && topFlag < len(summaries) {
+		summaries = summaries[:topFlag]
+	}
+
+	if outputFlag == "json" {
+		return displayImagesJSON(summaries, nodeImages)
+	}
+
+	display.DisplayImagesSummaryTable(summaries)
+
+	if breakdownFlag {
+		fmt.Println()
+		for _, summary := range summaries {
+			images := nodeImages[summary.NodeName]
+			if len(images) > 0 {
+				fmt.Printf("\nNode: %s\n", summary.NodeName)
+				display.DisplayImagesTable(summary.NodeName, images, false)
+			}
+		}
 	}
 
 	return nil
@@ -231,8 +322,19 @@ func executeQuery(ctx context.Context, client *k8s.Client, showPods, showNodes, 
 			continue
 		}
 
+		images, err := client.GetNodeImages(ctx, nodeName)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to get images for node %s: %v\n", nodeName, err)
+			images = nil
+		}
+
+		var imageBytes int64
+		for _, img := range images {
+			imageBytes += img.SizeBytes
+		}
+
 		totalBytes := int64(50 * 1024 * 1024 * 1024)
-		nodeStorage := analyzer.CalculateNodeStorage(summary, nodeName, totalBytes)
+		nodeStorage := analyzer.CalculateNodeStorage(summary, nodeName, totalBytes, imageBytes)
 		nodes = append(nodes, nodeStorage)
 		allContainers = append(allContainers, nodeStorage.Containers...)
 	}
@@ -307,4 +409,11 @@ func displayJSON(nodes []*models.NodeStorage, containers []models.Container, sho
 	}
 
 	return nil
+}
+
+func displayImagesJSON(summaries []models.NodeImageSummary, nodeImages map[string][]models.NodeImage) error {
+	if breakdownFlag {
+		return display.DisplayImagesDetailJSON(summaries, nodeImages)
+	}
+	return display.DisplayImagesSummaryJSON(summaries)
 }

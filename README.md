@@ -7,6 +7,7 @@ A CLI tool for querying Kubernetes node and pod disk usage statistics. kube-disk
 - Query storage usage for all nodes or a specific node
 - Display pod-level storage breakdown
 - Container-level storage details (rootfs + logs)
+- Docker image storage statistics per node
 - Color-coded output for high-usage nodes (green < 60%, yellow 60-79%, red >= 80%)
 - Sort by top N consumers
 - JSON output support
@@ -56,6 +57,12 @@ kube-disk-stats --context my-cluster-context
 
 ### Subcommands
 
+Display all storage usage (nodes and pods):
+
+```bash
+kube-disk-stats all
+```
+
 Display pod storage usage:
 
 ```bash
@@ -72,6 +79,18 @@ Display container storage usage:
 
 ```bash
 kube-disk-stats containers
+```
+
+Display Docker images on nodes (summary):
+
+```bash
+kube-disk-stats images
+```
+
+Display Docker images with detailed breakdown:
+
+```bash
+kube-disk-stats images --breakdown
 ```
 
 ### Filtering and Sorting
@@ -114,6 +133,7 @@ kube-disk-stats --watch --interval 10s
 | `--top` | `-t` | Show top N results | all |
 | `--watch` | `-w` | Watch mode | false |
 | `--interval` | `-i` | Refresh interval for watch mode | 5s |
+| `--breakdown` | | Show rootfs/logs/images breakdown | false |
 
 ## Examples
 
@@ -133,6 +153,18 @@ Query specific context and export JSON:
 
 ```bash
 kube-disk-stats --context prod --output json > stats.json
+```
+
+View top 5 nodes by image size:
+
+```bash
+kube-disk-stats images --top 5
+```
+
+Watch images with 30-second refresh:
+
+```bash
+kube-disk-stats images --watch --interval 30s
 ```
 
 ## Development
