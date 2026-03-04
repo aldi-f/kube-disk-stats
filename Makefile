@@ -1,4 +1,4 @@
-.PHONY: build clean test lint docker-build docker-push install release
+.PHONY: build clean test lint install release
 
 APP_NAME=kube-disk-stats
 DOCKER_IMAGE=ghcr.io/aldi-f/kube-disk-stats
@@ -45,16 +45,6 @@ lint:
 	@echo "Running linters..."
 	golangci-lint run
 
-docker-build:
-	@echo "Building Docker image..."
-	docker build -t $(DOCKER_IMAGE):$(VERSION) -f Dockerfile .
-	docker tag $(DOCKER_IMAGE):$(VERSION) $(DOCKER_IMAGE):latest
-
-docker-push:
-	@echo "Pushing Docker image..."
-	docker push $(DOCKER_IMAGE):$(VERSION)
-	docker push $(DOCKER_IMAGE):latest
-
 install: build
 	@echo "Installing $(APP_NAME)..."
 	$(GO) install $(LDFLAGS) .
@@ -80,7 +70,5 @@ help:
 	@echo "  clean        - Remove build artifacts"
 	@echo "  test         - Run tests"
 	@echo "  lint         - Run linters"
-	@echo "  docker-build - Build Docker image"
-	@echo "  docker-push  - Push Docker image"
 	@echo "  install      - Install binary to GOPATH/bin"
 	@echo "  release      - Create release packages"

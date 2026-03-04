@@ -58,7 +58,6 @@ Enhancement suggestions are welcome! Please:
 ### Prerequisites
 
 - Go 1.23 or higher
-- Docker (optional, for containerized development)
 - Make (optional, for building)
 
 ### Setting Up
@@ -138,7 +137,6 @@ git push origin v1.0.0
 The GitHub Actions workflow will:
 1. Build binaries for all platforms
 2. Create a GitHub release
-3. Build and push Docker images
 
 ## Questions?
 

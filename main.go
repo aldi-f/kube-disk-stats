@@ -7,7 +7,7 @@ import (
 	"github.com/aldi-f/kube-disk-stats/cmd"
 )
 
-var Version = "1.0.0"
+var Version = "1.1.0"
 
 func main() {
 	cmd.Version = Version

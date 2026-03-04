@@ -32,7 +32,6 @@ cli/
 ├── main.go               # Application entry point
 ├── go.mod                # Go module dependencies
 ├── Makefile              # Build targets
-├── Dockerfile            # Container build definition
 ├── .golangci.yml        # Linter configuration
 ├── .gitignore            # Git ignore patterns
 ├── LICENSE               # MIT License
@@ -94,7 +93,6 @@ k8s.io/apimachinery v0.30.3           // Kubernetes utilities
   6. Build binaries
   7. Upload artifacts
   8. Run golangci-lint
-  9. Build and push Docker images (on main branch)
 
 ### Release Workflow (`.github/workflows/release.yml`)
 - Triggers on tag push (v*.*.*) or workflow_dispatch
@@ -104,8 +102,6 @@ k8s.io/apimachinery v0.30.3           // Kubernetes utilities
   2. Create GitHub Release with auto-generated notes
   3. Build release binaries for all platforms
   4. Upload release assets (tar.gz and zip)
-  5. Build and push Docker images to Docker Hub and GHCR
-  6. Multi-architecture Docker builds (amd64, arm64)
 
 ## Building and Releasing
 
@@ -116,8 +112,6 @@ make build        # Build for current platform
 make build-all    # Build for all platforms
 make test         # Run tests
 make lint         # Run linters
-make docker-build # Build Docker image
-make docker-push  # Push Docker image
 make install      # Install to GOPATH/bin
 make release      # Create release packages
 make clean        # Remove build artifacts
@@ -147,28 +141,6 @@ The release workflow will:
 1. Create GitHub release with changelog
 2. Build binaries for all platforms
 3. Upload release artifacts
-4. Build and push Docker images
-
-## Docker Support
-
-### Build Docker Image
-
-```bash
-docker build -t kube-disk-stats:latest .
-```
-
-### Run Docker Container
-
-```bash
-docker run --rm -v ~/.kube:/root/.kube kube-disk-stats
-docker run --rm -v ~/.kube:/root/.kube kube-disk-stats --top 10
-```
-
-### Docker Hub Images
-
-Images are available at:
-- `ghcr.io/aldi-f/kube-disk-stats:latest`
-- `ghcr.io/aldi-f/kube-disk-stats:v1.0.0`
 
 ## Installation Methods
 
@@ -178,11 +150,6 @@ Download from GitHub Releases
 ### From Source
 ```bash
 go install github.com/aldi-f/kube-disk-stats@latest
-```
-
-### Using Docker
-```bash
-docker pull ghcr.io/ghcr.io/aldi-f/kube-disk-stats:latest
 ```
 
 ### Using Homebrew

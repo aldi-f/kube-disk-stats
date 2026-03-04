@@ -25,13 +25,6 @@ Download the latest release from the [GitHub Releases](https://github.com/aldi-f
 go install github.com/aldi-f/kube-disk-stats@latest
 ```
 
-### Using Docker
-
-```bash
-docker pull ghcr.io/aldi-f/kube-disk-stats:latest
-docker run --rm -v ~/.kube:/root/.kube ghcr.io/aldi-f/kube-disk-stats
-```
-
 ### From Homebrew (Linux/Mac)
 
 ```bash
@@ -179,7 +172,7 @@ make release
 This project includes GitHub Actions workflows for:
 
 - **Build**: Runs tests, lints code, and builds binaries for multiple platforms on push/PR
-- **Release**: Creates GitHub releases, builds release artifacts, and pushes Docker images on tags
+- **Release**: Creates GitHub releases and builds release artifacts on tags
 
 ### Creating a Release
 
