@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -86,4 +87,19 @@ func (c *Client) GetNodeImages(ctx context.Context, nodeName string) ([]models.N
 	}
 
 	return images, nil
+}
+
+func (c *Client) GetPodsByNode(ctx context.Context, nodeName string) ([]*corev1.Pod, error) {
+	pods, err := c.CoreV1().Pods("").List(ctx, metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("spec.nodeName=%s", nodeName),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pods for node %s: %w", nodeName, err)
+	}
+
+	result := make([]*corev1.Pod, 0, len(pods.Items))
+	for i := range pods.Items {
+		result = append(result, &pods.Items[i])
+	}
+	return result, nil
 }

@@ -20,6 +20,7 @@ type Container struct {
 	PodAge      string `json:"pod_age"`
 	RootFSBytes int64  `json:"rootfs_bytes"`
 	LogsBytes   int64  `json:"logs_bytes"`
+	ImageBytes  int64  `json:"image_bytes"`
 	TotalBytes  int64  `json:"total_bytes"`
 	NodeName    string `json:"node_name"`
 	NodeAge     string `json:"node_age"`
@@ -32,6 +33,7 @@ type PodStorage struct {
 	Age            string      `json:"age"`
 	TotalBytes     int64       `json:"total_bytes"`
 	NodeTotalBytes int64       `json:"node_total_bytes"`
+	ImageBytes     int64       `json:"image_bytes"`
 	Containers     []Container `json:"containers"`
 }
 
@@ -47,14 +49,15 @@ type NodeImageSummary struct {
 }
 
 type Config struct {
-	Context    string
-	NodeFilter string
-	Output     string
-	Top        int
-	Watch      bool
-	Interval   time.Duration
-	Breakdown  bool
-	ShowImages bool
+	Context      string
+	NodeFilter   string
+	Output       string
+	Top          int
+	Watch        bool
+	Interval     time.Duration
+	Breakdown    bool
+	ShowImages   bool
+	IncludeImage bool
 }
 
 type StatsSummary struct {

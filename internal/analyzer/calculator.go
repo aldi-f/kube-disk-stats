@@ -4,15 +4,32 @@ import (
 	"fmt"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/aldi-f/kube-disk-stats/internal/models"
 )
 
-func CalculateNodeStorage(summary *models.StatsSummary, nodeName string, totalBytes int64, imageBytes int64) *models.NodeStorage {
+func CalculateNodeStorage(summary *models.StatsSummary, nodeName string, totalBytes int64, imageBytes int64, images []models.NodeImage, pods []*corev1.Pod, includeImage bool) *models.NodeStorage {
 	node := &models.NodeStorage{
 		Name:       nodeName,
 		Age:        calculateAge(summary.Node.StartTime),
 		TotalBytes: totalBytes,
 		ImageBytes: imageBytes,
+	}
+
+	imageMap := make(map[string]int64)
+	for _, img := range images {
+		for _, name := range img.Names {
+			imageMap[name] = img.SizeBytes
+		}
+	}
+
+	containerImageMap := make(map[string]string)
+	for _, pod := range pods {
+		for _, container := range pod.Spec.Containers {
+			key := fmt.Sprintf("%s/%s/%s", pod.Namespace, pod.Name, container.Name)
+			containerImageMap[key] = container.Image
+		}
 	}
 
 	var totalUsed int64
@@ -24,7 +41,19 @@ func CalculateNodeStorage(summary *models.StatsSummary, nodeName string, totalBy
 		for _, container := range pod.Containers {
 			rootfs := getSafeInt(container.RootFS.UsedBytes)
 			logs := getSafeInt(container.Logs.UsedBytes)
+
+			var containerImageBytes int64
+			if includeImage {
+				key := fmt.Sprintf("%s/%s/%s", pod.PodRef.Namespace, pod.PodRef.Name, container.Name)
+				if imageName, exists := containerImageMap[key]; exists {
+					containerImageBytes = imageMap[imageName]
+				}
+			}
+
 			totalBytesContainer := rootfs + logs
+			if includeImage {
+				totalBytesContainer += containerImageBytes
+			}
 
 			containers = append(containers, models.Container{
 				Name:        container.Name,
@@ -33,6 +62,7 @@ func CalculateNodeStorage(summary *models.StatsSummary, nodeName string, totalBy
 				PodAge:      calculateAge(pod.StartTime),
 				RootFSBytes: rootfs,
 				LogsBytes:   logs,
+				ImageBytes:  containerImageBytes,
 				TotalBytes:  totalBytesContainer,
 				NodeName:    nodeName,
 				NodeAge:     node.Age,
@@ -44,7 +74,9 @@ func CalculateNodeStorage(summary *models.StatsSummary, nodeName string, totalBy
 		totalUsed += podTotal
 	}
 
-	totalUsed += imageBytes
+	if !includeImage {
+		totalUsed += imageBytes
+	}
 	node.UsedBytes = totalUsed
 	if totalBytes > 0 {
 		node.Percentage = float64(totalUsed) / float64(totalBytes) * 100
@@ -95,6 +127,7 @@ func GroupByPod(containers []models.Container, nodeCapacities map[string]int64) 
 		if pod, exists := podMap[key]; exists {
 			pod.Containers = append(pod.Containers, container)
 			pod.TotalBytes += container.TotalBytes
+			pod.ImageBytes += container.ImageBytes
 		} else {
 			nodeTotalBytes := int64(0)
 			if cap, ok := nodeCapacities[container.NodeName]; ok {
@@ -107,6 +140,7 @@ func GroupByPod(containers []models.Container, nodeCapacities map[string]int64) 
 				Age:            container.PodAge,
 				TotalBytes:     container.TotalBytes,
 				NodeTotalBytes: nodeTotalBytes,
+				ImageBytes:     container.ImageBytes,
 				Containers:     []models.Container{container},
 			}
 		}

@@ -29,11 +29,13 @@ func formatBytes(bytes int64) string {
 	return fmt.Sprintf("%d B", bytes)
 }
 
-func DisplayNodesTable(nodes []*models.NodeStorage, breakdown bool) {
+func DisplayNodesTable(nodes []*models.NodeStorage, breakdown bool, includeImage bool) {
 	table := tablewriter.NewWriter(os.Stdout)
 
 	headers := []string{"NODE", "TOTAL", "USED", "%", "PODS", "AGE"}
-	if breakdown {
+	if breakdown && includeImage {
+		headers = []string{"NODE", "TOTAL", "ROOTFS", "LOGS", "IMAGE", "USED", "%", "PODS", "AGE"}
+	} else if breakdown {
 		headers = []string{"NODE", "TOTAL", "ROOTFS", "LOGS", "IMAGES", "USED", "%", "PODS", "AGE"}
 	}
 
@@ -58,7 +60,17 @@ func DisplayNodesTable(nodes []*models.NodeStorage, breakdown bool) {
 			formatBytes(node.TotalBytes),
 		}
 
-		if breakdown {
+		if breakdown && includeImage {
+			rootfsBytes := int64(0)
+			logsBytes := int64(0)
+			imageBytes := int64(0)
+			for _, container := range node.Containers {
+				rootfsBytes += container.RootFSBytes
+				logsBytes += container.LogsBytes
+				imageBytes += container.ImageBytes
+			}
+			row = append(row, formatBytes(rootfsBytes), formatBytes(logsBytes), formatBytes(imageBytes))
+		} else if breakdown {
 			rootfsBytes := int64(0)
 			logsBytes := int64(0)
 			for _, container := range node.Containers {
@@ -69,6 +81,7 @@ func DisplayNodesTable(nodes []*models.NodeStorage, breakdown bool) {
 		}
 
 		row = append(row,
+			formatBytes(node.UsedBytes),
 			percentage,
 			fmt.Sprintf("%d", node.PodCount),
 			node.Age,
@@ -79,11 +92,13 @@ func DisplayNodesTable(nodes []*models.NodeStorage, breakdown bool) {
 	table.Render()
 }
 
-func DisplayPodsTable(pods []*models.PodStorage, breakdown bool) {
+func DisplayPodsTable(pods []*models.PodStorage, breakdown bool, includeImage bool) {
 	table := tablewriter.NewWriter(os.Stdout)
 
 	headers := []string{"NAMESPACE", "POD", "NODE", "USAGE", "%", "AGE"}
-	if breakdown {
+	if breakdown && includeImage {
+		headers = []string{"NAMESPACE", "POD", "NODE", "ROOTFS", "LOGS", "IMAGE", "USED", "%", "AGE"}
+	} else if breakdown {
 		headers = []string{"NAMESPACE", "POD", "NODE", "ROOTFS", "LOGS", "USED", "%", "AGE"}
 	}
 
@@ -113,7 +128,17 @@ func DisplayPodsTable(pods []*models.PodStorage, breakdown bool) {
 			truncateString(pod.NodeName, 30),
 		}
 
-		if breakdown {
+		if breakdown && includeImage {
+			rootfsBytes := int64(0)
+			logsBytes := int64(0)
+			imageBytes := int64(0)
+			for _, container := range pod.Containers {
+				rootfsBytes += container.RootFSBytes
+				logsBytes += container.LogsBytes
+				imageBytes += container.ImageBytes
+			}
+			row = append(row, formatBytes(rootfsBytes), formatBytes(logsBytes), formatBytes(imageBytes), formatBytes(pod.TotalBytes))
+		} else if breakdown {
 			rootfsBytes := int64(0)
 			logsBytes := int64(0)
 			for _, container := range pod.Containers {
@@ -133,9 +158,16 @@ func DisplayPodsTable(pods []*models.PodStorage, breakdown bool) {
 	table.Render()
 }
 
-func DisplayContainersTable(containers []models.Container) {
+func DisplayContainersTable(containers []models.Container, includeImage bool) {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"NAMESPACE", "POD", "CONTAINER", "ROOTFS", "LOGS", "TOTAL"})
+
+	headers := []string{"NAMESPACE", "POD", "CONTAINER", "ROOTFS", "LOGS"}
+	if includeImage {
+		headers = append(headers, "IMAGE")
+	}
+	headers = append(headers, "TOTAL")
+
+	table.SetHeader(headers)
 	table.SetAutoWrapText(false)
 	table.SetAutoFormatHeaders(true)
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
@@ -149,14 +181,19 @@ func DisplayContainersTable(containers []models.Container) {
 	table.SetNoWhiteSpace(true)
 
 	for _, container := range containers {
-		table.Append([]string{
+		row := []string{
 			truncateString(container.Namespace, 20),
 			truncateString(container.PodName, 30),
 			truncateString(container.Name, 25),
 			formatBytes(container.RootFSBytes),
 			formatBytes(container.LogsBytes),
-			formatBytes(container.TotalBytes),
-		})
+		}
+		if includeImage {
+			row = append(row, formatBytes(container.ImageBytes))
+		}
+		row = append(row, formatBytes(container.TotalBytes))
+
+		table.Append(row)
 	}
 
 	table.Render()
